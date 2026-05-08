@@ -4,9 +4,13 @@ Interactive autonomous vehicle simulator using Active Inference, FastAPI, WebSoc
 Para ejecutar el proyecto hacer lo siguiente:
 
 python -m venv venv
+
 venv\Scripts\activate
+
 pip install -r requirements.txt
+
 python -m uvicorn backend.main:app --reload --port 8000
+
 
 El proyecto esta subido en Render, adjunto el enlace para que vean como queda:
 
