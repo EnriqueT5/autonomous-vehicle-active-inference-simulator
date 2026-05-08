@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Simulador cognitivo interactivo de vehículo autónomo con Active Inference. Percepción parcial, inferencia probabilística y navegación bajo incertidumbre.">
+  <title>Active Inference — Simulación de Vehículo Autónomo</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- ========== HEADER ========== -->
+  <header class="header" id="header">
+    <div class="header-title">
+      <span class="icon">🧠</span> ACTIVE INFERENCE — VEHÍCULO AUTÓNOMO
+    </div>
+    <div class="header-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Listo</span>
+      <span style="color:var(--text-dim)">|</span>
+      <span id="cycleCount">Ciclo: 0</span>
+      <span style="color:var(--text-dim)">|</span>
+      <span id="timeDisplay">0.0s</span>
+    </div>
+  </header>
+
+  <!-- ========== MAIN LAYOUT ========== -->
+  <div class="main-layout">
+
+    <!-- ===== LEFT SIDEBAR — Controles ===== -->
+    <aside class="sidebar-left">
+
+      <!-- Simulación -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">⚡</span> SIMULACIÓN</div>
+        <div class="speed-buttons">
+          <button class="btn btn-primary" id="btnStartPause" onclick="toggleSimulation()">▶ Iniciar</button>
+          <button class="btn" id="btnStep" onclick="executeStep()">⏭ Paso</button>
+          <button class="btn btn-danger" id="btnReset" onclick="resetSimulation()">↻ Reset</button>
+        </div>
+      </div>
+
+      <!-- Velocidad -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">⏱</span> VELOCIDAD</div>
+        <div class="speed-buttons" id="speedButtons">
+          <button class="btn" data-speed="slow" onclick="setSpeed('slow')">🐢 Lento</button>
+          <button class="btn active" data-speed="normal" onclick="setSpeed('normal')">🚗 Normal</button>
+          <button class="btn" data-speed="fast" onclick="setSpeed('fast')">🏎 Rápido</button>
+          <button class="btn" data-speed="turbo" onclick="setSpeed('turbo')">⚡ Turbo</button>
+        </div>
+        <div style="margin-top:8px;font-size:0.68rem;color:var(--text-dim)" id="speedInfo">
+          Intervalo: 3000ms
+        </div>
+      </div>
+
+      <!-- Mapas -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">🗺</span> ESCENARIOS</div>
+        <div class="map-list" id="mapList"></div>
+        <button class="btn btn-primary" style="margin-top:8px;width:100%" onclick="randomMap()">🎲 Mapa Aleatorio</button>
+      </div>
+
+      <!-- Herramientas de edición -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">✏️</span> EDICIÓN</div>
+        <div class="edit-tools" id="editTools">
+          <button class="tool-btn btn active" data-tool="none" onclick="setTool('none')"><span class="tool-icon">🖱</span> Normal</button>
+          <button class="tool-btn btn" data-tool="set_start" onclick="setTool('set_start')"><span class="tool-icon">📍</span> Inicio A</button>
+          <button class="tool-btn btn" data-tool="set_destination" onclick="setTool('set_destination')"><span class="tool-icon">🎯</span> Destino B</button>
+          <button class="tool-btn btn" data-tool="free" onclick="setTool('free')"><span class="tool-icon">🛣</span> Libre</button>
+          <button class="tool-btn btn" data-tool="blocked" onclick="setTool('blocked')"><span class="tool-icon">🚧</span> Bloqueo</button>
+          <button class="tool-btn btn" data-tool="traffic" onclick="setTool('traffic')"><span class="tool-icon">🚗</span> Tráfico</button>
+          <button class="tool-btn btn" data-tool="semaphore" onclick="setTool('semaphore')"><span class="tool-icon">🚦</span> Semáforo</button>
+          <button class="tool-btn btn" data-tool="accident" onclick="setTool('accident')"><span class="tool-icon">💥</span> Accidente</button>
+          <button class="tool-btn btn" data-tool="rain" onclick="setTool('rain')"><span class="tool-icon">🌧</span> Lluvia</button>
+          <button class="tool-btn btn" data-tool="erase" onclick="setTool('erase')"><span class="tool-icon">🧹</span> Borrar</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== CENTER — Mapa de Simulación ===== -->
+    <main class="center-area">
+      <!-- Vista toggle -->
+      <div class="view-toggle">
+        <button class="view-btn active" id="viewReal" onclick="setView('real')">🌍 Mundo Real (η)</button>
+        <button class="view-btn" id="viewBeliefs" onclick="setView('beliefs')">🧠 Creencias (μ)</button>
+        <button class="view-btn" id="viewBoth" onclick="setView('both')">⚖ Comparar</button>
+      </div>
+
+      <!-- Canvas -->
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="simulationCanvas"></canvas>
+        <div class="canvas-overlay">
+          <div class="overlay-badge" id="modeBadge">
+            <span id="modeIcon">➡️</span> <span id="modeText">PRAGMATIC</span>
+          </div>
+          <div class="overlay-badge" id="stateBadge">
+            <span id="stateIcon">⏳</span> <span id="stateText">SEARCHING</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leyenda -->
+      <div class="legend" id="legend">
+        <div class="legend-item"><div class="legend-color" style="background:#2a3a4a"></div> Libre (0)</div>
+        <div class="legend-item"><div class="legend-color" style="background:#546e7a"></div> Bloqueo (1)</div>
+        <div class="legend-item"><div class="legend-color" style="background:#e65100"></div> Tráfico (2)</div>
+        <div class="legend-item"><div class="legend-color" style="background:#00c853"></div> Semáforo (3)</div>
+        <div class="legend-item"><div class="legend-color" style="background:#b71c1c"></div> Accidente (4)</div>
+        <div class="legend-item"><div class="legend-color" style="background:#0277bd"></div> Lluvia (5)</div>
+        <div class="legend-item"><div class="legend-color" style="background:#1a1a2e;border:1px dashed #444"></div> Desconocido (?)</div>
+        <div class="legend-item"><div class="legend-color" style="background:var(--neon-cyan)"></div> Vehículo</div>
+        <div class="legend-item"><div class="legend-color" style="background:var(--neon-green)"></div> Inicio (A)</div>
+        <div class="legend-item"><div class="legend-color" style="background:var(--neon-pink)"></div> Destino (B)</div>
+      </div>
+    </main>
+
+    <!-- ===== RIGHT SIDEBAR — Panel del Agente ===== -->
+    <aside class="sidebar-right">
+
+      <!-- Estado -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">🤖</span> ESTADO DEL AGENTE</div>
+        <div style="text-align:center;margin-bottom:8px">
+          <div class="state-badge state-SEARCHING" id="agentStateBadge">⏳ SEARCHING</div>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Posición</span>
+          <span class="metric-value" id="agentPos">(0, 0)</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Dirección</span>
+          <span class="metric-value" id="agentDir">→</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Destino</span>
+          <span class="metric-value" id="agentDest">(0, 0)</span>
+        </div>
+      </div>
+
+      <!-- Radar / Observaciones -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">📡</span> SENSORES (o)</div>
+        <div class="radar-container">
+          <div class="radar">
+            <div class="radar-scan"></div>
+            <div class="radar-center"></div>
+            <div class="radar-label front" id="radarFront">?</div>
+            <div class="radar-label back" id="radarBack">?</div>
+            <div class="radar-label left" id="radarLeft">?</div>
+            <div class="radar-label right" id="radarRight">?</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Homeostasis -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">💓</span> HOMEOSTASIS</div>
+        <div id="homeostasisPanel">
+          <div class="metric-row"><span class="metric-label">🛡 Seguridad</span><span class="metric-value" id="metSafety">100%</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill fill-green" id="barSafety" style="width:100%"></div></div>
+          <div class="metric-row"><span class="metric-label">🔋 Energía</span><span class="metric-value" id="metEnergy">100%</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill fill-cyan" id="barEnergy" style="width:100%"></div></div>
+          <div class="metric-row"><span class="metric-label">❓ Incertidumbre</span><span class="metric-value" id="metUncertainty">100%</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill fill-yellow" id="barUncertainty" style="width:100%"></div></div>
+          <div class="metric-row"><span class="metric-label">📈 Progreso</span><span class="metric-value" id="metProgress">0%</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill fill-green" id="barProgress" style="width:0%"></div></div>
+          <div class="metric-row"><span class="metric-label">⚠ Riesgo</span><span class="metric-value" id="metRisk">0%</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill fill-red" id="barRisk" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Métricas -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">📊</span> MÉTRICAS</div>
+        <div class="metric-row"><span class="metric-label">Pasos</span><span class="metric-value" id="metSteps">0</span></div>
+        <div class="metric-row"><span class="metric-label">Bloqueos</span><span class="metric-value" id="metBlocks">0</span></div>
+        <div class="metric-row"><span class="metric-label">Recalculaciones</span><span class="metric-value" id="metRecalc">0</span></div>
+        <div class="metric-row"><span class="metric-label">Mapa descubierto</span><span class="metric-value" id="metDiscovered">0%</span></div>
+        <div class="metric-row"><span class="metric-label">Acc. Pragmáticas</span><span class="metric-value" id="metPragmatic">0</span></div>
+        <div class="metric-row"><span class="metric-label">Acc. Epistémicas</span><span class="metric-value" id="metEpistemic">0</span></div>
+      </div>
+
+      <!-- Logs -->
+      <div class="panel">
+        <div class="panel-title"><span class="icon">📋</span> LOG DE DECISIONES</div>
+        <div class="log-container" id="logContainer"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Arrival Modal -->
+  <div class="arrival-modal" id="arrivalModal">
+    <div class="arrival-content">
+      <h2>🏁 ¡Destino Alcanzado!</h2>
+      <p style="color:var(--text-secondary);margin-bottom:12px">El vehículo llegó del punto A al punto B.</p>
+      <div class="arrival-metrics" id="arrivalMetrics"></div>
+      <button class="btn btn-primary" style="margin-top:12px;padding:10px 24px" onclick="closeArrival()">Continuar</button>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
